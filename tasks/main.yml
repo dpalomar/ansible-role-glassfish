@@ -1,15 +1,9 @@
 ---
-- name: installing unzip
-  apt:
-    name: "{{ item }}"
-    state: present
-  with_items:
-    - unzip
 - name: Download glassfish
   get_url:
     url: "{{ glassfish_mirror }}/{{ glassfish_redis_filename }}"
     dest: "{{ glassfish_download_dir }}/{{ glassfish_redis_filename }}"
-    mode: 'u=rw,go=r'
+    mode: "0644"
     timeout: 1000
 - name: create Glassfish installation directory
   become: yes
@@ -17,7 +11,7 @@
     state: directory
     owner: root
     group: root
-    mode: 'u=rwx,go=rx'
+    mode: "0755"
     dest: "{{ glassfish_install_dir }}"
 - name: install Glassfish
   become: yes
@@ -27,7 +21,7 @@
     copy: false
     owner: root
     group: root
-    mode: 'u=rwx,go=rx'
+    mode: "0755"
 - name: Add asadmin to {{ glassfish_user }} bashrc
   lineinfile: dest=/home/{{ glassfish_user }}/.bashrc 
        line='export PATH={{ glassfish_install_dir}}/{{ glassfish_product }}/bin:$PATH' 
@@ -40,7 +34,7 @@
     dest: "{{ glassfish_download_dir }}/password.txt"
     owner: root
     group: root
-    mode: 'u=rwx,go=rx'
+    mode: "0755"
 - name: Change admin password
   command: >
    {{ glassfish_install_dir}}/{{ glassfish_product }}/bin/asadmin 
@@ -63,3 +57,17 @@
 - name: Removing Glassfish/Payara file
   file: path="{{ glassfish_download_dir }}/{{ glassfish_redis_filename }}"
    state=absent
+- name: Fixing ownership for domain1 directory
+  become: yes
+  file:
+    state: directory
+    owner: "{{ glassfish_user }}"
+    recurse: yes
+    mode: "0755"
+    dest: "{{ glassfish_install_dir}}/{{ glassfish_product }}/glassfish/domains/domain1"
+- name: "copy init script"
+  become: yes
+  action: template src=etc/init.d/glassfish dest=/etc/init.d/glassfish owner=root group=root mode=0754
+- name: Starting Glassfish/Payara with domain1
+  become: yes
+  shell: "/etc/init.d/glassfish start"
